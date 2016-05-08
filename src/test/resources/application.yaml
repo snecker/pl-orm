@@ -1,0 +1,6 @@
+spring:
+  datasource:
+    username: root
+    password:
+    url: jdbc:mysql://192.168.99.100:3306/laimi_test_010?useUnicode=true&characterEncoding=UTF-8
+
