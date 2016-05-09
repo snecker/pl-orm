@@ -1,4 +1,5 @@
 import org.junit.Test;
+import pl.orm.util.StringUtils;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -23,5 +24,23 @@ public class TestReflection {
         for (Method m : methos) {
             System.out.println("" + m.getName());
         }
+    }
+
+    @Test
+    public void testUncapti() throws Exception {
+        String aa = "TCustomerDao";
+        String ret = StringUtils.underscored(aa);
+        System.out.println("ret=" + ret);
+    }
+
+    @Test
+    public void testGroup() throws Exception {
+
+        String str = "selectAgentCodeAndCsCustomerIdByCustomerIdAndAgentCode";
+
+        String[] parts = str.split("select" + "|By");
+
+        System.out.println(parts);
+
     }
 }

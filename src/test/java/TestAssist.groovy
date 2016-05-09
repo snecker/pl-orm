@@ -8,10 +8,10 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory
 import org.springframework.context.ApplicationContext
-import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider
 import org.springframework.jdbc.core.JdbcOperations
 import pl.TCustomerDaoImpl
 import pl.orm.Customer
+import pl.orm.SQLParser
 import pl.orm.TCustomerDao
 
 import java.lang.reflect.Method
@@ -33,8 +33,8 @@ class TestAssist extends BaseTest {
         CtClass.debugDump = "./dump";
         //        /*获得运行时类的上下文*/
         ClassPool pool = ClassPool.getDefault();
+        //
         Class sourceClass = TCustomerDao.class;
-
 
         CtClass newClass = pool.makeClass("${sourceClass.getName()}\$EnhancerImpl")
 
@@ -67,7 +67,6 @@ private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
             String methodName = m.getName();
             Class clazz = m.getReturnType();
             Type type = m.getGenericReturnType();
-            println "${methodName} =======>${clazz},,,${type}"
             //实现方法体
 //            CtMethod ctMethod = CtMethod.make("public ${type} ${methodName}", newClass)
             CtMethod sourceCtMethod = pool.getMethod(sourceClass.getName(), methodName)
@@ -81,12 +80,33 @@ private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 //            System.out.println(\$0);
 //            System.out.println(\$sig);
 //            System.out.println("aaaaaaa=${type.getTypeName()}");
+            //parse sql
+            SQLParser sqlParser = new SQLParser(m);
+            String sql = sqlParser.getRawSql();
+            //
+            int parameterCount = m.getParameterCount();
+            StringBuilder sb = new StringBuilder("")
+            if (parameterCount > 0) {
+                sb.append(",new Object[]{")
+                (1..parameterCount).each {
+                    if (it > 1) {
+                        sb.append(",")
+                    }
+                    sb.append("\$${it}")
+                }
+                sb.append("}")
+            }
+
+            String params = sb.toString()
 
             newCtMethod.setBody("""{
-return (${type.getTypeName()})jdbcTemplate.queryForObject("select * from t_customer limit 1", new org.springframework.jdbc.core.BeanPropertyRowMapper(\$type));;
+
+java.util.List list = jdbcTemplate.query("${sql}"${params},new org.springframework.jdbc.core.BeanPropertyRowMapper(\$type));
+return list ==null || list.size()==0 ? null :(${clazz.getName()})list.get(0);
 }""".toString())
             newClass.addMethod(newCtMethod)
         }
+        //
 
 //        //超类
 //        Method[] jdbcOperationMethods = JdbcOperations.class.getDeclaredMethods();
@@ -109,14 +129,12 @@ return (${type.getTypeName()})jdbcTemplate.queryForObject("select * from t_custo
 
         beanFactory.registerSingleton(sourceClass.getTypeName(), wrappedClassInstance)
 
-        ClassPathScanningCandidateComponentProvider
-
         //test
         TCustomerDao inContainerInstance = applicationContext.getBean(TCustomerDao.class)
 
 
-        Customer ret = inContainerInstance.findOne(null);
-        println "结果===${ret}"
+        Customer ret = inContainerInstance.selectByCustomerIdAndAgentCode(17, "testwanglu");
+        println "结果===${ret !=null ?ret.getTitle() :'结果是空!'}"
     }
 
     //手动添加没有@component的到 容器里面

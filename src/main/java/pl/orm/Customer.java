@@ -9,6 +9,28 @@ public class Customer {
     public String mobile;
     public String email;
     public String address;
+    public String title;
+    public String agentCode;
+
+    public String getAgentCode() {
+        return agentCode;
+    }
+
+    public void setAgentCode(String agentCode) {
+        this.agentCode = agentCode;
+    }
+
+    public void setCustomerId(Integer customerId) {
+        this.customerId = customerId;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
 
     public int getCustomerId() {
         return customerId;

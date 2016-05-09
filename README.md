@@ -1,23 +1,13 @@
 # pl-orm
-java lightweight orm framework
+java lightweight orm framework based on Spring-JDBC
+
+self study
 
 # todo
-- 只要一个注解就能操作数据库(可不写sql)
-```java
-@Dao
-public interface TCustomerDao{
-    Customer findByCustomerId(Long id);
-    List<Customer> findAll();
-}
-```
-- 基于springboot
-- 动态注册interface到spring容器
-
-流程
-
-一个 interface tableDao
-通过javassist工具动态生成 tableDao的实现类TableDaoImpl,并注册到spring容器中
-通过@autowire就可以使用
+- 查:select
+- 改:update
+- 增:insert
+- 删:delete
 
 # 说明
 

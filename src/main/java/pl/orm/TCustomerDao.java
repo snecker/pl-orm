@@ -5,7 +5,9 @@ package pl.orm;
  */
 //@Dao
 public interface TCustomerDao {
-    Customer findOne(Long id);
+    Customer selectByCustomerIdAndAgentCode(Long customerId, String agentCode);
+
+//    Customer findOne(Long id);
 
 //    public Iterator<Customer> find();
 //
