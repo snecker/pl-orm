@@ -1,5 +1,6 @@
 package pl.orm;
 
+import pl.orm.annotation.Bind;
 import pl.orm.annotation.Dao;
 
 /**
@@ -7,9 +8,15 @@ import pl.orm.annotation.Dao;
  */
 @Dao
 public interface TCustomerDao {
-    Customer selectByCustomerIdAndAgentCode(Long customerId, String agentCode);
+//    Customer selectByCustomerIdAndAgentCode(Long customerId, String agentCode);
 
-    Customer selectTitleAndStatusAndMobileByCustomerIdAndAgentCode(Long customerId, String agentCode);
+    Customer selectBy(@Bind("customerId") Long customerId,
+                      @Bind("agentCode") String agentCode);
+
+    Customer selectCsCustomerIdAndContactsBy(@Bind("customerId") Long customerId,
+                      @Bind("agentCode") String agentCode);
+
+//    Customer selectTitleAndStatusAndMobileByCustomerIdAndAgentCode(Long customerId, String agentCode);
 
 //    public Iterator<Customer> find();
 //

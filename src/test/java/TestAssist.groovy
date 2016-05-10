@@ -38,6 +38,7 @@ class TestAssist extends BaseTest {
 
         CtClass newClass = pool.makeClass("${sourceClass.getName()}\$EnhancerImpl")
 
+
         //原来的接口定义
         newClass.addInterface(pool.get(sourceClass.getName()))
         //jdbcOperation定义,方便原生操作.

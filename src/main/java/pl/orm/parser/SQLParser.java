@@ -2,12 +2,13 @@ package pl.orm.parser;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import pl.orm.annotation.Bind;
 import pl.orm.util.KEY;
 import pl.orm.util.StringUtils;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
-import java.util.Arrays;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static java.util.Arrays.stream;
@@ -38,13 +39,7 @@ public class SQLParser {
         return rawSQL;
     }
 
-    private String parseSqlByMethod(Method mMethod) {
-        String sql = parseSqlByMethodName(mMethod);
-
-        return sql;
-    }
-
-    private String parseSqlByMethodName(Method method) {
+    private String parseSqlByMethod(Method method) {
         String methodName = method.getName();
         if (!validateMethodName(methodName)) {
             throw new IllegalArgumentException(methodName + " is not support,now support " + Arrays.toString(CURDS));
@@ -85,7 +80,7 @@ public class SQLParser {
     private String parseColumnByMethodName(String opt, String methodName) {
         String[] parts = methodName.split(opt + "|By");
 
-        if (parts.length == 3) {//column and where
+        if (parts.length >= 2) {//column and where
             String column = parts[1];
 
             if (StringUtils.isBlank(column)) {
@@ -101,35 +96,71 @@ public class SQLParser {
 
         }
 
-        return "";
+        return "*";
     }
 
     private String parseWhereClauseByMethodName(Method method) {
         String methodName = method.getName();
         String[] parts = methodName.split("By");
+        int parameterCnt = method.getParameterCount();
+
         if (parts.length == 2) {
             String[] wheres = parts[1].split("And");
             //where必须和参数列表一致
-            int parameterCnt = method.getParameterCount();
             if (wheres.length != parameterCnt) {
                 throw new IllegalArgumentException(method + " 方法参数跟名字By参数不一致! ");
             }
 
             if (wheres.length > 1) {
                 return String.join(KEY.BLANK, Arrays.stream(wheres).map(it -> {
-                    String lower = StringUtils.underscored(it);
+                    String columnName = StringUtils.underscored(it);
                     return new StringBuilder("and ")
-                            .append(lower)
-                            .append("=? ").toString();
+                            .append(columnName)
+                            .append("=:")
+                            .append(it).toString();
                 }).collect(Collectors.toList()));
             } else {
                 return new StringBuilder("and ")
                         .append(StringUtils.underscored(wheres[0]))
-                        .append("=? ").toString();
+                        .append("=:")
+                        .append(wheres[0]).toString();
             }
-
+        } else if (parts.length == 1) {//没有,说明where条件由参数来拼装
+            Annotation[][] parameterAnnotations = method.getParameterAnnotations();
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < parameterCnt; i++) {
+                Annotation[] oneParameterAnnos = parameterAnnotations[i];
+                if (oneParameterAnnos.length == 0) {
+                    throw new IllegalArgumentException("第" + (i + 1) + "个参数没有注解!");
+                }
+                if (oneParameterAnnos[0] instanceof Bind) {
+                    String whereColumnName = ((Bind) oneParameterAnnos[0]).value();
+                    String columnName = StringUtils.underscored(whereColumnName);
+                    sb.append(" and ").append(columnName).append("=:").append(whereColumnName).append(KEY.BLANK);
+                } else {
+                    throw new IllegalArgumentException("暂时不支持其他注解:" + oneParameterAnnos[0].getClass().getName());
+                }
+            }
+            return sb.toString();
         }
         return "";
+    }
+
+    public List<Annotation> getMethodParameterAnnotation(Method method) {
+        Annotation[][] parameterAnnotations = method.getParameterAnnotations();
+        List<Annotation> retAnnotations = new ArrayList<>();
+        for (int i = 0; i < method.getParameterCount(); i++) {
+            Annotation[] oneParameterAnnos = parameterAnnotations[i];
+            if (oneParameterAnnos.length == 0) {
+                throw new IllegalArgumentException("第" + (i + 1) + "个参数没有注解!");
+            }
+            retAnnotations.add(oneParameterAnnos[0]);
+        }
+        long distinctSize = retAnnotations.stream().map(it -> it.annotationType()).distinct().count();
+        if (distinctSize > 1) {
+            throw new IllegalArgumentException("一个方法只允许出现一种Bind注解!");
+        }
+        return retAnnotations;
     }
 
     private boolean validateMethodName(String methodName) {
