@@ -1,4 +1,4 @@
-package pl.orm;
+package pl.orm.parser;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +33,7 @@ public class SQLParser {
     public String getRawSql() {
         if (annotations.length == 0) {
             rawSQL = parseSqlByMethod(mMethod);
-            System.out.println("rawSql:{}" + rawSQL);
+            logger.info("[SQLParser]Method:{}->rawSql:{}", mMethod, rawSQL);
         }
         return rawSQL;
     }

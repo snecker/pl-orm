@@ -11,7 +11,7 @@ import org.springframework.context.ApplicationContext
 import org.springframework.jdbc.core.JdbcOperations
 import pl.TCustomerDaoImpl
 import pl.orm.Customer
-import pl.orm.SQLParser
+import pl.orm.parser.SQLParser
 import pl.orm.TCustomerDao
 
 import java.lang.reflect.Method
@@ -68,7 +68,7 @@ private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
             Class clazz = m.getReturnType();
             Type type = m.getGenericReturnType();
             //实现方法体
-//            CtMethod ctMethod = CtMethod.make("public ${type} ${methodName}", newClass)
+//            CtMethod ctMethod = CtMethod.make("public ${type} ${methodName}", proxyClass)
             CtMethod sourceCtMethod = pool.getMethod(sourceClass.getName(), methodName)
             //copy
             CtMethod newCtMethod = CtNewMethod.copy(sourceCtMethod, methodName, newClass, null);
@@ -115,7 +115,7 @@ return list ==null || list.size()==0 ? null :(${clazz.getName()})list.get(0);
 //        for (Method m : jdbcOperationMethods) {
 //            CtMethod ctMethod = pool.getMethod(JdbcOperations.class.getName(), m.getName())
 //            ctMethod.setBody("return null;")
-//            newClass.addMethod(ctMethod)
+//            proxyClass.addMethod(ctMethod)
 //        }
 
         newClass.setModifiers(newClass.getModifiers() & ~Modifier.ABSTRACT);

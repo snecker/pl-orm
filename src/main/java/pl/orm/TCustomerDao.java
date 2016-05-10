@@ -1,13 +1,15 @@
 package pl.orm;
 
+import pl.orm.annotation.Dao;
+
 /**
  * Created by wangpeng on 2016/5/7.
  */
-//@Dao
+@Dao
 public interface TCustomerDao {
     Customer selectByCustomerIdAndAgentCode(Long customerId, String agentCode);
 
-//    Customer findOne(Long id);
+    Customer selectTitleAndStatusAndMobileByCustomerIdAndAgentCode(Long customerId, String agentCode);
 
 //    public Iterator<Customer> find();
 //

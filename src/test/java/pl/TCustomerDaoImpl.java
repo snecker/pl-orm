@@ -44,4 +44,9 @@ public class TCustomerDaoImpl implements TCustomerDao {
     public Customer selectByCustomerIdAndAgentCode(Long customerId, String agentCode) {
         return null;
     }
+
+    @Override
+    public Customer selectTitleAndStatusAndMobileByCustomerIdAndAgentCode(Long customerId, String agentCode) {
+        return null;
+    }
 }
