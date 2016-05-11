@@ -1,4 +1,3 @@
-import org.apache.commons.lang3.builder.ToStringBuilder
 import org.junit.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.jdbc.core.BeanPropertyRowMapper
@@ -7,7 +6,6 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import org.springframework.jdbc.core.namedparam.SqlParameterSource
 import pl.orm.Customer
 import pl.orm.TCustomerDao
-
 /**
  * Created by wangpeng on 2016/5/9.
  */
@@ -17,11 +15,20 @@ class TestPureDao extends BaseTest {
 
     @Test
     public void testDao() throws Exception {
-        Customer cus = tCustomerDao.selectBy(23, "testwanglu")
-        println "${cus == null ? null : ToStringBuilder.reflectionToString(cus)}"
+//        Customer cus = tCustomerDao.selectBy(23, "testwanglu")
+//        println "${cus == null ? null : ToStringBuilder.reflectionToString(cus)}"
+//
+//        Customer cus1 = tCustomerDao.selectCustomerIdAndContactsBy(23, "testwanglu")
+//        println "${ToStringBuilder.reflectionToString(cus1)}"
 
-        Customer cus1 = tCustomerDao.selectCsCustomerIdAndContactsBy(23, "testwanglu")
-        println "${ToStringBuilder.reflectionToString(cus1)}"
+//        Map param = [customerId: 23, agentCode: 'testwanglu']
+//        def cus2 = tCustomerDao.selectCustomerIdAndContactsBy(param)
+
+        Customer param = new Customer()
+        param.setCustomerId(23)
+        param.setAgentCode("testwanglu")
+        def cus2 = tCustomerDao.selectCustomerIdAndContactsBy(param)
+        println("${cus2}")
     }
 
     @Autowired

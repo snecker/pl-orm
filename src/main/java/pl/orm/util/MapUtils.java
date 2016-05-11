@@ -5,6 +5,7 @@ import org.springframework.beans.BeanUtils;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Created by wangpeng on 2016/5/10.
@@ -26,5 +27,10 @@ public class MapUtils {
             map.put(names.get(i), values.get(i));
         }
         return map;
+    }
+
+    public static String mapToSqlWhereClause(Map<String, Object> params) {
+        return String.join(" ", params.keySet().stream().map(key ->
+                new StringBuilder(" and ").append(StringUtils.underscored(key)).append("=:").append(key)).collect(Collectors.toList()));
     }
 }

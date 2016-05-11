@@ -1,7 +1,11 @@
 package pl.orm;
 
 import pl.orm.annotation.Bind;
+import pl.orm.annotation.BindBean;
+import pl.orm.annotation.BindMap;
 import pl.orm.annotation.Dao;
+
+import java.util.Map;
 
 /**
  * Created by wangpeng on 2016/5/7.
@@ -13,8 +17,12 @@ public interface TCustomerDao {
     Customer selectBy(@Bind("customerId") Long customerId,
                       @Bind("agentCode") String agentCode);
 
-    Customer selectCsCustomerIdAndContactsBy(@Bind("customerId") Long customerId,
-                      @Bind("agentCode") String agentCode);
+    Customer selectCustomerIdAndContactsBy(@Bind("customerId") Long customerId,
+                                           @Bind("agentCode") String agentCode);
+
+    Customer selectCustomerIdAndContactsBy(@BindMap Map query);
+
+    Customer selectCustomerIdAndContactsBy(@BindBean Customer query);
 
 //    Customer selectTitleAndStatusAndMobileByCustomerIdAndAgentCode(Long customerId, String agentCode);
 

@@ -1,16 +1,18 @@
 package pl.orm;
 
-public class Customer {
-    public Integer customerId;
-    public String csCustomerId;
-    public String code;
-    public String kind;
-    public String contacts;
-    public String mobile;
-    public String email;
-    public String address;
-    public String title;
-    public String agentCode;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+
+public class Customer extends Base {
+    private Integer customerId;
+    private String csCustomerId;
+    private String code;
+    private String kind;
+    private String contacts;
+    private String mobile;
+    private String email;
+    private String address;
+    private String title;
+    private String agentCode;
 
     public String getAgentCode() {
         return agentCode;
@@ -119,5 +121,10 @@ public class Customer {
      */
     public boolean isCustomer() {
         return code == null ? true : code.indexOf('@') == -1;
+    }
+
+    @Override
+    public String toString() {
+        return ToStringBuilder.reflectionToString(this);
     }
 }

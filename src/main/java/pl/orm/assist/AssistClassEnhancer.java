@@ -11,7 +11,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import pl.orm.annotation.Bind;
 import pl.orm.annotation.BindBean;
 import pl.orm.annotation.BindMap;
-import pl.orm.parser.SQLParser;
+import pl.orm.parser.SQLParser2;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -27,7 +27,7 @@ public class AssistClassEnhancer {
     private Logger logger = LoggerFactory.getLogger(this.getClass());
     private final Class sourceClass;
     private final ClassPool classPool;
-    private final CtClass proxyClass;
+    private final CtClass proxyCtClass;
 
     private static final String ASSIST_CLASS_SUFFIX = "$PlOrmEnhancer";
 
@@ -38,7 +38,9 @@ public class AssistClassEnhancer {
     public AssistClassEnhancer(Class sourceClass) {
         this.sourceClass = sourceClass;
         this.classPool = ClassPool.getDefault();
-        this.proxyClass = classPool.makeClass(sourceClass.getName() + ASSIST_CLASS_SUFFIX);
+
+        this.proxyCtClass = classPool.makeClass(sourceClass.getName() + ASSIST_CLASS_SUFFIX);
+
     }
 
     /**
@@ -47,20 +49,20 @@ public class AssistClassEnhancer {
      */
     public Class assist() {
         try {
-            this.proxyClass.setInterfaces(
+            this.proxyCtClass.setInterfaces(
                     classPool.get(new String[]{sourceClass.getName(), JdbcOperations.class.getName()})
             );
-            //set import
-//            classPool.importPackage("org.springframework.jdbc.core.*");
             //annotation
             CtField jdbcTemplateCtField = CtField.make(String.format(
                     "%s namedParameterJdbcTemplate;", NamedParameterJdbcTemplate.class.getName()
-            ), proxyClass);
+            ), proxyCtClass);
             this.assistAnnotation(jdbcTemplateCtField, Autowired.class);
             //implement methods
-            this.assistMethods(sourceClass.getDeclaredMethods());
-//            proxyClass.writeFile();
-            return proxyClass.toClass();
+            CtClass sourceCtClass = classPool.get(sourceClass.getName());
+            //
+            this.assistMethods(sourceCtClass.getDeclaredMethods());
+//            proxyCtClass.writeFile();
+            return proxyCtClass.toClass();
 
         } catch (NotFoundException e) {
             e.printStackTrace();
@@ -73,66 +75,54 @@ public class AssistClassEnhancer {
     }
 
 
-    private void assistMethods(Method[] declaredMethods) throws NotFoundException, CannotCompileException {
-        for (Method m : declaredMethods) {
-            String methodName = m.getName();
-            CtMethod sourceCtMethod = classPool.getMethod(sourceClass.getName(), methodName);
-            CtMethod proxyCtMethod = CtNewMethod.copy(sourceCtMethod, methodName, proxyClass, null);
-            SQLParser sqlParser = new SQLParser(m);
-            String sql = sqlParser.getRawSql();
+    private void assistMethods(CtMethod[] declaredCtMethods) throws NotFoundException, CannotCompileException, ClassNotFoundException {
+        for (CtMethod srcCtMethod : declaredCtMethods) {
+            CtMethod proxyCtMethod = CtNewMethod.copy(srcCtMethod, proxyCtClass, null);
+            String sql = SQLParser2.parseSQL(srcCtMethod);
             //
-            int parameterCount = m.getParameterCount();
+            int parameterCount = srcCtMethod.getParameterTypes().length;
             String methodBody = "";
             if (parameterCount > 0) {
-                List<java.lang.annotation.Annotation> annotationList = sqlParser.getMethodParameterAnnotation(m);
+                List<java.lang.annotation.Annotation> annotationList = SQLParser2.getMethodParameterAnnotation(srcCtMethod);
                 java.lang.annotation.Annotation firstAnno = annotationList.get(0);
                 if (firstAnno instanceof Bind) {
                     String nameArrayString = String.join(",", annotationList.stream().map(it -> "\"" + ((Bind) it).value() + "\"").collect(Collectors.toList()));
                     String valueArrayString = String.join(",", IntStream.range(1, parameterCount + 1)
                             .mapToObj(it -> new StringBuilder("$").append(it).toString())
                             .collect(Collectors.toList()));
-                    String[] aa = new String[]{"aa"};
-                    java.util.Arrays.asList(new String[]{"aa", "bb"});
                     methodBody = String.format("{" +
                             "java.util.List nameList=java.util.Arrays.asList(new String []{%s});" +
                             "java.util.List valueList=java.util.Arrays.asList(new Object []{%s});" +
                             "java.util.Map  map =pl.orm.util.MapUtils.mergeListToMap(nameList,valueList);" +
                             "java.util.List list =namedParameterJdbcTemplate.query(\"%s\",map,new org.springframework.jdbc.core.BeanPropertyRowMapper($type));" +
                             "return list == null || list.size() == 0 ? null:(%s)list.get(0);" +
-                            "}", nameArrayString, valueArrayString, sql, m.getReturnType().getName());
-//                    methodBody = String.format("{" +
-//                            "java.util.List nameList=java.util.Arrays.asList(new String []{%s});" +
-//                            "java.util.List valueList=java.util.Arrays.asList(new Object []{%s});" +
-//                            "java.util.Map  map =pl.orm.util.MapUtils.mergeListToMap(nameList,valueList);" +
-//                            "java.util.List list =namedParameterJdbcTemplate.query(\"%s\",map,new org.springframework.jdbc.core.BeanPropertyRowMapper($type));"+
-//                            "System.out.println(\"%s\");"+
-//                            "return null;" +
-//                            "}", nameArrayString, valueArrayString, sql, m.getReturnType().getName());
+                            "}", nameArrayString, valueArrayString, sql, srcCtMethod.getReturnType().getName());
                 } else if (firstAnno instanceof BindMap) {
                     methodBody = String.format("{" +
+                            "String sqlWhere=pl.orm.util.MapUtils.mapToSqlWhereClause($1);" +
                             "java.util.List list = " +
-                            "namedParameterJdbcTemplate.query(%s,$1,new org.springframework.jdbc.core.BeanPropertyRowMapper($type));" +
+                            "namedParameterJdbcTemplate.query(\"%s\"+sqlWhere,$1,new org.springframework.jdbc.core.BeanPropertyRowMapper($type));" +
                             "return list == null || list.size() == 0 ? null:(%s)list.get(0);" +
-                            "}", sql, m.getReturnType().getName());
-
+                            "}", sql, srcCtMethod.getReturnType().getName());
                 } else if (firstAnno instanceof BindBean) {
                     methodBody = String.format("{" +
+                            "String sqlWhere=pl.orm.util.BeanUtil.convertNotNullWhereClause($1);" +
                             "java.util.List list = " +
-                            "namedParameterJdbcTemplate.query(%s,new org.springframework.jdbc.core.namedparam.BeanPropertySqlParameterSource($1)," +
+                            "namedParameterJdbcTemplate.query(\"%s\"+sqlWhere,new org.springframework.jdbc.core.namedparam.BeanPropertySqlParameterSource($1)," +
                             "new org.springframework.jdbc.core.BeanPropertyRowMapper($type));" +
                             "return list == null || list.size() == 0 ? null:(%s)list.get(0);" +
-                            "}", sql, m.getReturnType().getName());
+                            "}", sql, srcCtMethod.getReturnType().getName());
                 }
             }
 
 
             logger.info("[Method Body Print] {}", methodBody);
             proxyCtMethod.setBody(methodBody);
-            proxyClass.addMethod(proxyCtMethod);
+            proxyCtClass.addMethod(proxyCtMethod);
         }
 
         //abstract to concrete;
-        proxyClass.setModifiers(proxyClass.getModifiers() & ~Modifier.ABSTRACT);
+        proxyCtClass.setModifiers(proxyCtClass.getModifiers() & ~Modifier.ABSTRACT);
     }
 
     /**
@@ -171,7 +161,7 @@ public class AssistClassEnhancer {
     }
 
     public void assistAnnotation(CtField ctField, Class<? extends java.lang.annotation.Annotation> annoClass) {
-        ClassFile ccFile = proxyClass.getClassFile();
+        ClassFile ccFile = proxyCtClass.getClassFile();
         ConstPool constPool = ccFile.getConstPool();
         AnnotationsAttribute attribute = new AnnotationsAttribute(constPool, AnnotationsAttribute.visibleTag);
         Annotation autowiredAnno = new Annotation(annoClass.getName(), constPool);
@@ -180,7 +170,7 @@ public class AssistClassEnhancer {
         ctField.getFieldInfo().addAttribute(attribute);
         //
         try {
-            proxyClass.addField(ctField);
+            proxyCtClass.addField(ctField);
         } catch (CannotCompileException e) {
             e.printStackTrace();
         }

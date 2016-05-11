@@ -1,16 +1,20 @@
 import javassist.ClassPool;
+import javassist.CtClass;
 import javassist.CtMethod;
+import javassist.CtNewMethod;
 import javassist.bytecode.CodeAttribute;
 import javassist.bytecode.LocalVariableAttribute;
 import org.junit.Test;
 import org.springframework.core.LocalVariableTableParameterNameDiscoverer;
 import org.springframework.core.ParameterNameDiscoverer;
+import pl.orm.Customer;
 import pl.orm.TCustomerDao;
 import pl.orm.assist.AssistClassEnhancer;
 import pl.orm.util.StringUtils;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedType;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.Arrays;
@@ -137,6 +141,46 @@ public class TestReflection {
         java.util.Map map = pl.orm.util.MapUtils.mergeListToMap(nameList, valueList);
 
         System.out.println("map--");
+    }
+
+    @Test
+    public void testDupmethod() throws Exception {
+        ClassPool classPool = ClassPool.getDefault();
+        CtClass destCtClass = classPool.makeClass(TCustomerDao.class.getName() + "$NewClassName");
+        CtClass srcCtClass = classPool.get(TCustomerDao.class.getName());
+        destCtClass.setInterfaces(classPool.get(new String[]{TCustomerDao.class.getName()}));
+
+        CtMethod[] srcMethods = srcCtClass.getDeclaredMethods();
+        for (CtMethod srcMethod : srcMethods) {
+            CtMethod newMethod = CtNewMethod.copy(srcMethod, destCtClass, null);
+            newMethod.setModifiers(javassist.Modifier.PUBLIC);
+            newMethod.setBody("{return null;}");
+            destCtClass.addMethod(newMethod);
+        }
+
+//        CtClass returnType = classPool.get(Customer.class.getName());
+//        CtClass[] paramTypes = classPool.get(new String[]{Long.class.getName(), String.class.getName()});
+//        destCtClass.addMethod(CtNewMethod.make(javassist.Modifier.PUBLIC, returnType, "selectCustomerIdAndContactsBy", paramTypes, null, "{return null;}", destCtClass));
+
+
+        Class clz = destCtClass.toClass();
+        System.out.println(destCtClass.toClass());
+    }
+
+    @Test
+    public void testNull() throws Exception {
+        Customer param = new Customer();
+        param.setCustomerId(23);
+        param.setAgentCode("testwanglu");
+        param.setId(1234L);
+
+
+        Field[] fields = param.getClass().getFields();
+
+        for (Field f : fields) {
+            f.setAccessible(true);
+            System.out.println("f->" + f.getName() + ":" + f.get(param));
+        }
 
     }
 }
